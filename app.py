@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 import requests
 from google.transit import gtfs_realtime_pb2
 from datetime import datetime, timezone
@@ -15,6 +15,10 @@ OC_TRANSPO_URL = "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-tp/
 OTTAWA_TZ = ZoneInfo("America/Toronto")
 
 # === ROUTE ===
+@app.route("/")
+def home():
+    return render_template("interface.html")
+
 @app.route("/next_bus", methods=["GET"])
 def get_next_two_buses():
     headers = {
@@ -23,7 +27,6 @@ def get_next_two_buses():
     }
 
     try:
-        # Fetch GTFS Realtime Trip Updates (protobuf)
         response = requests.get(OC_TRANSPO_URL, headers=headers)
         response.raise_for_status()
         feed = gtfs_realtime_pb2.FeedMessage()
