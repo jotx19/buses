@@ -52,9 +52,9 @@ def get_next_two_buses():
 
         # Return as human-readable 12-hour format string
         if len(next_two) == 1:
-            return f"Next 68 bus at stop {STOP_ID} arrives at {next_two[0].strftime('%I:%M %p')}"
+            return f"Next 68 bus arrives at {next_two[0].strftime('%I:%M %p')}"
         else:
-            return (f"Next 68 buses at stop {STOP_ID} arrive at "
+            return (f"Next 68 buses arrive at "
                     f"{next_two[0].strftime('%I:%M %p')} and {next_two[1].strftime('%I:%M %p')}")
 
     except Exception as e:

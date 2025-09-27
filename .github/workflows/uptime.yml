@@ -1,0 +1,18 @@
+name: Keep App Alive
+
+on:
+  schedule:
+    - cron: '*/2 * * * *' 
+  workflow_dispatch:
+
+jobs:
+  ping-sites:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Backend
+        run: |
+          echo "Pinging backend: $BACKEND_URL"
+          curl -s -o /dev/null -w "%{http_code}\n" "$BACKEND_URL"
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
