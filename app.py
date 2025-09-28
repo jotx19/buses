@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 import requests
 from google.transit import gtfs_realtime_pb2
 from datetime import datetime, timezone
@@ -8,17 +8,22 @@ app = Flask(__name__)
 
 # === CONFIGURATION ===
 SUBSCRIPTION_KEY = "8a108b0bd4f140ccabb60b6a431673e5"
-STOP_ID = 1095
-BUS_NUMBER = "68"
+DEFAULT_STOP_ID = 1095
+DEFAULT_BUS_NUMBER = "68"
 OC_TRANSPO_URL = "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-tp/beta/v1/TripUpdates"
 OTTAWA_TZ = ZoneInfo("America/Toronto")
+
 
 @app.route("/")
 def home():
     return render_template("interface.html")
 
+
 @app.route("/next_bus")
 def get_next_two_buses():
+    bus_number = request.args.get("bus", DEFAULT_BUS_NUMBER)
+    stop_id = int(request.args.get("stop", DEFAULT_STOP_ID))
+
     headers = {
         "Ocp-Apim-Subscription-Key": SUBSCRIPTION_KEY,
         "Cache-Control": "no-cache"
@@ -35,10 +40,10 @@ def get_next_two_buses():
 
         for entity in feed.entity:
             trip_update = entity.trip_update
-            if not trip_update or trip_update.trip.route_id != BUS_NUMBER:
+            if not trip_update or trip_update.trip.route_id != bus_number:
                 continue
             for stop_time in trip_update.stop_time_update:
-                if int(stop_time.stop_id) == STOP_ID and stop_time.arrival:
+                if int(stop_time.stop_id) == stop_id and stop_time.arrival:
                     arrival_utc = datetime.fromtimestamp(stop_time.arrival.time, tz=timezone.utc)
                     arrival_local = arrival_utc.astimezone(OTTAWA_TZ)
                     if arrival_local >= now_local:
@@ -56,7 +61,7 @@ def get_next_two_buses():
 
         formatted = [format_arrival(a) for a in next_two]
 
-        return render_template("bus.html", buses=formatted)
+        return render_template("bus.html", buses=formatted, bus_number=bus_number, stop_id=stop_id)
 
     except Exception as e:
-        return render_template("bus.html", error=str(e))
+        return render_template("bus.html", error=str(e), bus_number=bus_number, stop_id=stop_id)

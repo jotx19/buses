@@ -17,7 +17,7 @@
         {% for bus in buses %}
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-700 px-4 py-3 rounded-lg">
             <p class="text-base sm:text-lg mb-2 sm:mb-0">
-              Bus 68 is coming at 
+              Bus {{ bus_number }} is coming at 
               <span class="font-semibold text-yellow-300">{{ bus.time }}</span>
             </p>
             <p class="text-sm sm:text-base text-gray-300">
@@ -29,6 +29,7 @@
     {% else %}
       <p class="text-gray-400 text-center">No upcoming buses found.</p>
     {% endif %}
+
   </div>
 
 </body>
