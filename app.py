@@ -7,19 +7,17 @@ from zoneinfo import ZoneInfo
 app = Flask(__name__)
 
 # === CONFIGURATION ===
-SUBSCRIPTION_KEY = "8a108b0bd4f140ccabb60b6a431673e5"  # Replace with your key if needed
+SUBSCRIPTION_KEY = "8a108b0bd4f140ccabb60b6a431673e5"
 STOP_ID = 1095
 BUS_NUMBER = "68"
-DEFAULT_PORT = 5001
 OC_TRANSPO_URL = "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-tp/beta/v1/TripUpdates"
 OTTAWA_TZ = ZoneInfo("America/Toronto")
 
-# === ROUTE ===
 @app.route("/")
 def home():
     return render_template("interface.html")
 
-@app.route("/next_bus", methods=["GET"])
+@app.route("/next_bus")
 def get_next_two_buses():
     headers = {
         "Ocp-Apim-Subscription-Key": SUBSCRIPTION_KEY,
@@ -32,10 +30,9 @@ def get_next_two_buses():
         feed = gtfs_realtime_pb2.FeedMessage()
         feed.ParseFromString(response.content)
 
-        now_utc = datetime.now(timezone.utc)
+        now_local = datetime.now(OTTAWA_TZ)
         arrivals = []
 
-        # Collect all upcoming arrivals for this bus at this stop
         for entity in feed.entity:
             trip_update = entity.trip_update
             if not trip_update or trip_update.trip.route_id != BUS_NUMBER:
@@ -43,26 +40,23 @@ def get_next_two_buses():
             for stop_time in trip_update.stop_time_update:
                 if int(stop_time.stop_id) == STOP_ID and stop_time.arrival:
                     arrival_utc = datetime.fromtimestamp(stop_time.arrival.time, tz=timezone.utc)
-                    if arrival_utc >= now_utc:
-                        arrivals.append(arrival_utc.astimezone(OTTAWA_TZ))
+                    arrival_local = arrival_utc.astimezone(OTTAWA_TZ)
+                    if arrival_local >= now_local:
+                        arrivals.append(arrival_local)
 
-        if not arrivals:
-            return "No upcoming 68 bus arrivals at this stop"
-
-        # Sort and pick the first two arrivals
         arrivals.sort()
         next_two = arrivals[:2]
 
-        # Return as human-readable 12-hour format string
-        if len(next_two) == 1:
-            return f"Next 68 bus arrives at {next_two[0].strftime('%I:%M %p')}"
-        else:
-            return (f"Next 68 buses arrive at "
-                    f"{next_two[0].strftime('%I:%M %p')} and {next_two[1].strftime('%I:%M %p')}")
+        def format_arrival(arrival_time):
+            minutes = int((arrival_time - now_local).total_seconds() // 60)
+            return {
+                "time": arrival_time.strftime("%I:%M %p"),
+                "minutes": minutes
+            }
+
+        formatted = [format_arrival(a) for a in next_two]
+
+        return render_template("bus.html", buses=formatted)
 
     except Exception as e:
-        return f"Error: {e}"
-
-if __name__ == "__main__":
-    print(f"Starting Flask server on port {DEFAULT_PORT}...")
-    app.run(host="0.0.0.0", port=DEFAULT_PORT)
+        return render_template("bus.html", error=str(e))

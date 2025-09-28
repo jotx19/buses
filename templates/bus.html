@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Next Bus Info</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen text-white">
+
+  <div class="bg-gray-800 shadow-xl rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-md sm:max-w-xl md:max-w-2xl mx-4">
+
+    {% if error %}
+      <p class="text-red-400 font-medium text-center">Error: {{ error }}</p>
+    {% elif buses %}
+      <div class="space-y-4">
+        {% for bus in buses %}
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-700 px-4 py-3 rounded-lg">
+            <p class="text-base sm:text-lg mb-2 sm:mb-0">
+              Bus 68 is coming at 
+              <span class="font-semibold text-yellow-300">{{ bus.time }}</span>
+            </p>
+            <p class="text-sm sm:text-base text-gray-300">
+              in {{ bus.minutes }} minutes
+            </p>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-gray-400 text-center">No upcoming buses found.</p>
+    {% endif %}
+  </div>
+
+</body>
+</html>
