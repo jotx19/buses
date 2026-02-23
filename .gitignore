@@ -3,3 +3,6 @@
 *.env.development.local
 *.env.test.local
 *env
+__pycache__
+.venv
+.env
