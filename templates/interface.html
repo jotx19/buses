@@ -3,16 +3,311 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bus Tracker</title>
+  <title>OC Next</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem("oc-next-theme");
+      var dark = saved ? saved === "dark" : true;
+      document.documentElement.classList.toggle("dark", dark);
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Must use class strategy so the Light/Dark button overrides OS preference.
+    tailwind.config = { darkMode: "class" };
+  </script>
 </head>
-<body class="bg-black flex items-center justify-center h-screen">
-  <div class="text-center">
-    <h1 class="text-xl text-white mb-6">OC Transpo Bus Tracker</h1>
-    <a href="/next_bus"
-       class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition">
-       Get Buses
-    </a>
-  </div>
+<body class="h-screen overflow-hidden bg-white text-black antialiased dark:bg-neutral-950 dark:text-neutral-100">
+  <main class="mx-auto flex h-full max-w-5xl flex-col px-4 py-4 sm:px-6">
+    <header class="shrink-0 space-y-3 border-b border-black pb-4 dark:border-neutral-700">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">OC Next</h1>
+          <p class="text-sm text-neutral-600 dark:text-neutral-400">Nearby OC Transpo arrivals · live vehicles · speak / Siri</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <p id="updatedPill" class="text-xs text-neutral-500"></p>
+          <button id="btnTheme" type="button" class="border border-black px-3 py-2 text-sm hover:bg-black hover:text-white dark:border-neutral-500 dark:hover:bg-white dark:hover:text-black">Light</button>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button id="btnLocate" type="button" class="border border-black px-3 py-2 text-sm hover:bg-black hover:text-white dark:border-neutral-500 dark:hover:bg-white dark:hover:text-black">Use my location</button>
+        <button id="btnHome" type="button" class="border border-black px-3 py-2 text-sm hover:bg-black hover:text-white dark:border-neutral-500 dark:hover:bg-white dark:hover:text-black">Home location</button>
+        <button id="btnSpeakAll" type="button" class="border border-black px-3 py-2 text-sm hover:bg-black hover:text-white disabled:opacity-40 dark:border-neutral-500 dark:hover:bg-white dark:hover:text-black" disabled>Speak nearby</button>
+        <button id="btnRefresh" type="button" class="border border-black px-3 py-2 text-sm hover:bg-black hover:text-white dark:border-neutral-500 dark:hover:bg-white dark:hover:text-black">Refresh</button>
+      </div>
+
+      <p id="status" class="text-sm text-neutral-600 dark:text-neutral-400">Allow location to load live arrivals within 500 m.</p>
+      <p id="coordsPill" class="text-xs text-neutral-500">Waiting for location</p>
+    </header>
+
+    <section id="board" class="mt-4 grid min-h-0 flex-1 gap-4 overflow-hidden md:grid-cols-2" aria-live="polite">
+      <div class="flex min-h-0 flex-col border border-black dark:border-neutral-700">
+        <div class="flex shrink-0 items-center justify-between border-b border-black px-3 py-2 dark:border-neutral-700">
+          <h2 class="text-sm font-medium uppercase tracking-wide">Nearby arrivals</h2>
+        </div>
+        <div id="busList" class="min-h-0 flex-1 space-y-0 overflow-y-auto"></div>
+        <div id="detail" class="hidden shrink-0 border-t border-black px-3 py-3 text-sm dark:border-neutral-700"></div>
+      </div>
+
+      <div class="flex min-h-0 flex-col gap-4 overflow-hidden">
+        <div class="flex min-h-0 flex-1 flex-col border border-black dark:border-neutral-700">
+          <div class="flex shrink-0 items-center justify-between border-b border-black px-3 py-2 dark:border-neutral-700">
+            <h2 class="flex items-center gap-2 text-sm font-medium uppercase tracking-wide">
+              <span class="relative flex h-2.5 w-2.5" aria-hidden="true">
+                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span>
+              </span>
+              Live buses
+            </h2>
+            <span id="vehicleMeta" class="text-xs text-neutral-500">—</span>
+          </div>
+          <div id="vehicleList" class="min-h-0 flex-1 overflow-y-auto"></div>
+        </div>
+
+        <div class="shrink-0 border border-black px-3 py-3 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400">
+          <p class="font-medium text-black dark:text-neutral-100">Siri</p>
+          <p class="mt-1"><code>/siri/nearby</code> then <code>/siri/bus?bus=</code> · set HOME_LAT / HOME_LON</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      lat: null,
+      lon: null,
+      buses: [],
+      spoken: "",
+      selected: null,
+      timer: null,
+    };
+
+    const els = {
+      status: document.getElementById("status"),
+      busList: document.getElementById("busList"),
+      vehicleList: document.getElementById("vehicleList"),
+      detail: document.getElementById("detail"),
+      coordsPill: document.getElementById("coordsPill"),
+      updatedPill: document.getElementById("updatedPill"),
+      vehicleMeta: document.getElementById("vehicleMeta"),
+      btnLocate: document.getElementById("btnLocate"),
+      btnHome: document.getElementById("btnHome"),
+      btnSpeakAll: document.getElementById("btnSpeakAll"),
+      btnRefresh: document.getElementById("btnRefresh"),
+      btnTheme: document.getElementById("btnTheme"),
+    };
+
+    function isDark() {
+      return document.documentElement.classList.contains("dark");
+    }
+
+    function syncThemeButton() {
+      els.btnTheme.textContent = isDark() ? "Light" : "Dark";
+    }
+
+    function applyTheme(dark) {
+      document.documentElement.classList.toggle("dark", dark);
+      localStorage.setItem("oc-next-theme", dark ? "dark" : "light");
+      syncThemeButton();
+    }
+
+    const savedTheme = localStorage.getItem("oc-next-theme");
+    applyTheme(savedTheme ? savedTheme === "dark" : true);
+
+    els.btnTheme.addEventListener("click", () => applyTheme(!isDark()));
+
+    function setStatus(msg) {
+      els.status.textContent = msg;
+    }
+
+    function speak(text) {
+      if (!text || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.02;
+      window.speechSynthesis.speak(u);
+    }
+
+    function minutesLabel(m) {
+      if (m <= 0) return "now";
+      if (m === 1) return "1 min";
+      return m + " min";
+    }
+
+    function metresLabel(m) {
+      if (m < 1000) return Math.round(m) + " m";
+      return (m / 1000).toFixed(1) + " km";
+    }
+
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ("Request failed (" + res.status + ")"));
+      return data;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function renderBuses(buses) {
+      if (!buses.length) {
+        els.busList.innerHTML = '<p class="px-3 py-4 text-sm text-neutral-500">No upcoming buses nearby.</p>';
+        return;
+      }
+      els.busList.innerHTML = buses.map((b, i) => `
+        <button class="flex w-full items-center gap-3 border-b border-neutral-200 px-3 py-3 text-left hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900 ${state.selected === b.route_id ? "bg-neutral-100 dark:bg-neutral-900" : ""}" data-idx="${i}" type="button">
+          <span class="w-10 shrink-0 text-lg font-semibold">${escapeHtml(b.route_id)}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-medium">${escapeHtml(b.stop_name)}</span>
+            <span class="block text-xs text-neutral-500">${metresLabel(b.distance_m)} · stop ${escapeHtml(b.stop_id)}</span>
+          </span>
+          <span class="shrink-0 text-right">
+            <span class="block text-base font-semibold">${minutesLabel(b.minutes)}</span>
+            <span class="block text-xs text-neutral-500">${escapeHtml(b.time)}</span>
+          </span>
+        </button>
+      `).join("");
+
+      els.busList.querySelectorAll("button[data-idx]").forEach((btn) => {
+        btn.addEventListener("click", () => selectBus(buses[Number(btn.dataset.idx)]));
+      });
+    }
+
+    function renderVehicles(vehicles) {
+      if (!vehicles.length) {
+        els.vehicleList.innerHTML = '<p class="px-3 py-4 text-sm text-neutral-500">No live vehicles nearby.</p>';
+        els.vehicleMeta.textContent = "0";
+        return;
+      }
+      els.vehicleMeta.textContent = String(vehicles.length);
+      els.vehicleList.innerHTML = vehicles.map((v) => `
+        <div class="flex items-center gap-3 border-b border-neutral-200 px-3 py-3 dark:border-neutral-800">
+          <span class="w-10 shrink-0 text-lg font-semibold">${escapeHtml(v.route_id || "?")}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-medium">Bus ${escapeHtml(v.route_id || "—")}</span>
+            <span class="block text-xs text-neutral-500">${metresLabel(v.distance_m)}${v.speed_kmh ? " · " + Math.round(v.speed_kmh) + " km/h" : ""}</span>
+          </span>
+          <span class="text-xs text-neutral-500">${escapeHtml(v.updated || "live")}</span>
+        </div>
+      `).join("");
+    }
+
+    async function selectBus(bus) {
+      state.selected = bus.route_id;
+      renderBuses(state.buses);
+      els.detail.classList.remove("hidden");
+      els.detail.innerHTML = "<p>Loading route " + escapeHtml(bus.route_id) + "…</p>";
+
+      try {
+        const q = new URLSearchParams({
+          bus: bus.route_id,
+          lat: String(state.lat),
+          lon: String(state.lon),
+        });
+        const data = await fetchJSON("/api/bus?" + q.toString());
+        const arrivals = data.arrivals || [];
+        const rows = arrivals.length
+          ? arrivals.map((a) => `
+              <div class="flex justify-between gap-3 border-t border-neutral-200 py-2 dark:border-neutral-800">
+                <span>${escapeHtml(a.stop_name)} · ${escapeHtml(a.time)}</span>
+                <strong>${minutesLabel(a.minutes)}</strong>
+              </div>`).join("")
+          : '<p class="text-neutral-500">No upcoming arrivals for this route nearby.</p>';
+
+        els.detail.innerHTML = `
+          <p class="mb-2 text-neutral-700 dark:text-neutral-300">${escapeHtml(data.spoken || "")}</p>
+          ${rows}
+          <button id="btnSpeakBus" type="button" class="mt-3 border border-black px-3 py-2 text-sm hover:bg-black hover:text-white dark:border-neutral-500 dark:hover:bg-white dark:hover:text-black">Speak this bus</button>`;
+        document.getElementById("btnSpeakBus").addEventListener("click", () => speak(data.spoken));
+        speak(data.spoken);
+      } catch (err) {
+        els.detail.innerHTML = '<p class="text-neutral-500">' + escapeHtml(err.message) + "</p>";
+      }
+    }
+
+    async function loadFeeds() {
+      if (state.lat == null || state.lon == null) return;
+      setStatus("Fetching live OC Transpo feeds…");
+      els.btnLocate.disabled = true;
+      els.btnHome.disabled = true;
+      els.btnRefresh.disabled = true;
+
+      const q = new URLSearchParams({
+        lat: String(state.lat),
+        lon: String(state.lon),
+      });
+
+      try {
+        const [nearby, vehicles] = await Promise.all([
+          fetchJSON("/api/nearby?" + q.toString()),
+          fetchJSON("/api/vehicles?" + q.toString()),
+        ]);
+
+        state.buses = nearby.buses || [];
+        state.spoken = nearby.spoken || "";
+        els.coordsPill.textContent =
+          state.lat.toFixed(5) + ", " + state.lon.toFixed(5) +
+          " · " + (nearby.radius_m || 500) + " m · " + (nearby.stop_count || 0) + " stops";
+        els.updatedPill.textContent = "Updated " + new Date().toLocaleTimeString();
+        renderBuses(state.buses);
+        renderVehicles(vehicles.vehicles || []);
+        els.btnSpeakAll.disabled = !state.spoken;
+        setStatus(state.buses.length ? "Ready. Tap a route or speak." : "No arrivals matched nearby stops.");
+      } catch (err) {
+        setStatus(err.message);
+      } finally {
+        els.btnLocate.disabled = false;
+        els.btnHome.disabled = false;
+        els.btnRefresh.disabled = false;
+      }
+    }
+
+    function useCoords(lat, lon, label) {
+      state.lat = lat;
+      state.lon = lon;
+      state.selected = null;
+      els.detail.classList.add("hidden");
+      els.detail.innerHTML = "";
+      setStatus(label);
+      loadFeeds();
+      if (state.timer) clearInterval(state.timer);
+      state.timer = setInterval(loadFeeds, 30000);
+    }
+
+    function locate() {
+      if (!navigator.geolocation) {
+        setStatus("Geolocation not supported. Use home location.");
+        return;
+      }
+      setStatus("Getting your location…");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => useCoords(pos.coords.latitude, pos.coords.longitude, "Location found."),
+        (err) => setStatus("Location unavailable: " + err.message),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
+      );
+    }
+
+    async function useHome() {
+      setStatus("Loading home location…");
+      try {
+        const data = await fetchJSON("/api/nearby");
+        useCoords(data.lat, data.lon, "Using home location.");
+      } catch (err) {
+        setStatus(err.message + " Set HOME_LAT and HOME_LON in .env.");
+      }
+    }
+
+    els.btnLocate.addEventListener("click", locate);
+    els.btnHome.addEventListener("click", useHome);
+    els.btnRefresh.addEventListener("click", loadFeeds);
+    els.btnSpeakAll.addEventListener("click", () => speak(state.spoken));
+  </script>
 </body>
 </html>

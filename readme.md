@@ -1,30 +1,36 @@
-# OC Transpo Bus Tracker (Go)
+# OC Next — OC Transpo live nearby buses
 
-This project is a Go web app that shows the next two arrival times for an OC Transpo bus at a given stop using the GTFS Realtime API.
+Interactive Go web app using [OC Transpo GTFS-RT](https://www.octranspo.com/en/plan-your-trip/travel-tools/developers):
 
-It is a Go rewrite of a Flask app and supports:
-- Query parameters for bus and stop: `/next_bus?bus=68&stop=1095`
-- Automatic loading of an API key from a `.env` file
-- Simple HTML UI using Go templates
+- **TripUpdates** — next arrivals in minutes
+- **VehiclePositions** — live buses near you
+- **GTFS schedule `stops.txt`** — nearby stop lookup
+- Browser **geolocation** + **Speak**
+- **Siri / HomePod** plain-text endpoints for Apple Shortcuts
 
----
+## Quick start
 
-## Features
+```bash
+# .env
+OCTRANSPO_SUBSCRIPTION_KEY=your_key
+HOME_LAT=45.4215
+HOME_LON=-75.6972
 
-- Fetches live GTFS Realtime data from OC Transpo
-- Filters by route (bus number) and stop ID
-- Shows the next two upcoming arrivals
-- Uses environment variables for the API key
-- Simple web interface
-- Works locally and can be used from Apple Shortcuts
+go run .
+```
 
----
+Open http://localhost:8080 → **Use my location**.
 
-## Requirements
+## Endpoints
 
-- Go 1.20+ (Go 1.22 recommended)
-- An OC Transpo API subscription key
+| Path | Description |
+|------|-------------|
+| `/` | Interactive UI (location, nearby minutes, live vehicles, speak) |
+| `/api/nearby?lat=&lon=` | JSON nearby routes + spoken text |
+| `/api/bus?bus=&lat=&lon=` | JSON arrivals for a route near you |
+| `/api/vehicles?lat=&lon=` | JSON live VehiclePositions nearby |
+| `/siri/nearby` | Plain text for Siri Speak Text |
+| `/siri/bus?bus=` | Plain text arrivals after user picks a bus |
+| `/next_bus?bus=&stop=` | Legacy HTML arrivals |
 
----
-
-## Project Structure
+See [SIRI.md](SIRI.md) for HomePod Shortcuts setup.
