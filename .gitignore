@@ -6,3 +6,8 @@
 __pycache__
 .venv
 .env
+# Local / OS junk
+.DS_Store
+
+# OC Transpo GTFS cache (too large for GitHub; downloaded at runtime)
+data/
