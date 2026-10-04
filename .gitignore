@@ -11,3 +11,10 @@ __pycache__
 
 # OC Transpo GTFS cache (too large for GitHub; downloaded at runtime)
 data/
+
+# Rust build output
+/target
+
+# React 3D map (web/ → static/map is a build artifact)
+web/node_modules/
+static/map/

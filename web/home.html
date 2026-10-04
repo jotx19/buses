@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1c1c1e" />
+    <meta name="description" content="Live OC Transpo buses, trip planning and arrivals near you on a 3D map." />
+    <title>OC Next</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23DA291C'/%3E%3Cellipse cx='20' cy='20.5' rx='12.5' ry='9' fill='none' stroke='white' stroke-width='3.4' transform='rotate(-22 20 20)'/%3E%3C/svg%3E" />
+    <script>
+      // Same key as the map, so the theme carries over.
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("oc-next-theme") === "light" ? "light" : "dark";
+      } catch (e) {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/home/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* `dark:` follows the app's theme switch (html[data-theme]), not the OS setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  letter-spacing: -0.01em;
+}
+
+body {
+  background: #1c1c1e;
+}
+
+[data-theme="light"] body {
+  background: #f2f2f7;
+}
+
+/* ---- things MapLibre renders outside React ---- */
+
+.user-dot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.user-dot__core {
+  position: absolute;
+  inset: 3px;
+  border-radius: 9999px;
+  background: #0a84ff;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.user-dot__pulse {
+  position: absolute;
+  inset: -12px;
+  border-radius: 9999px;
+  background: rgba(10, 132, 255, 0.3);
+  animation: user-pulse 2.4s ease-out infinite;
+}
+
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib {
+  margin: 0 12px 12px 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  font-size: 11px;
+}
+
+[data-theme="dark"] .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib {
+  background: rgba(18, 16, 24, 0.45) !important;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="dark"] .maplibregl-ctrl-attrib a {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+[data-theme="dark"] .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+
+@keyframes user-pulse {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

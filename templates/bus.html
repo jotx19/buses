@@ -10,25 +10,25 @@
 
   <div class="bg-gray-800 shadow-xl rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-md sm:max-w-xl md:max-w-2xl mx-4">
 
-    {{ if .Error }}
-      <p class="text-red-400 font-medium text-center">Error: {{ .Error }}</p>
-    {{ else if .Buses }}
+    {% if error %}
+      <p class="text-red-400 font-medium text-center">Error: {{ error }}</p>
+    {% elif buses %}
       <div class="space-y-4">
-        {{ range .Buses }}
+        {% for b in buses %}
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-700 px-4 py-3 rounded-lg">
             <p class="text-base sm:text-lg mb-2 sm:mb-0">
-              Bus {{ $.BusNumber }} is coming at
-              <span class="font-semibold text-yellow-300">{{ .Time }}</span>
+              Bus {{ bus_number }} is coming at
+              <span class="font-semibold text-yellow-300">{{ b.time }}</span>
             </p>
             <p class="text-sm sm:text-base text-gray-300">
-              in {{ .Minutes }} minutes
+              in {{ b.minutes }} minutes
             </p>
           </div>
-        {{ end }}
+        {% endfor %}
       </div>
-    {{ else }}
+    {% else %}
       <p class="text-gray-400 text-center">No upcoming buses found.</p>
-    {{ end }}
+    {% endif %}
 
   </div>
 
