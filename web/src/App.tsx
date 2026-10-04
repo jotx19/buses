@@ -356,6 +356,18 @@ export default function App() {
     [controls, selectedId],
   );
 
+  // /map?route=110 (e.g. from the Siri shortcut): open filtered to that route.
+  const routeParamDone = useRef(false);
+  useEffect(() => {
+    if (routeParamDone.current || !allRoutes.length) return;
+    routeParamDone.current = true;
+    const wanted = new URLSearchParams(window.location.search).get("route")?.match(/\d+|[A-Za-z]+/)?.[0];
+    if (!wanted) return;
+    const route = allRoutes.find((r) => r.short_name.toLowerCase() === wanted.toLowerCase());
+    if (route) applyFilter(route);
+    else setNotice(`Route ${wanted} isn't in the OC Transpo schedule.`);
+  }, [allRoutes, applyFilter]);
+
   // ---- trip planning ----
   useEffect(() => {
     if (!trip) {

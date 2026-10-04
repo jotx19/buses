@@ -64,6 +64,25 @@ Enable **Personal Requests** on the HomePod.
 
 ---
 
+## 4. One conversational Shortcut (nearby → "Which bus?" → that bus)
+
+1. **URL** → `https://YOUR-APP.onrender.com/siri/nearby`
+2. **Get Contents of URL**
+3. **Speak Text** → *Contents of URL*
+4. **Ask for Input** → Prompt: `Which bus?` · Input Type: **Number**
+5. **URL** → `https://YOUR-APP.onrender.com/siri/bus?bus=` + *Provided Input*
+6. **Get Contents of URL**
+7. **Speak Text** → *Contents of URL*
+8. *(iPhone only, optional)* **URL** → `https://YOUR-APP.onrender.com/map?route=` + *Provided Input* → **Open URLs**
+
+Add to Siri as e.g. **"Bus time"**:
+
+> Hey Siri, bus time → *(nearby buses)* → "Which bus?" → **110** → *(arrivals for 110)*
+
+The server cleans up dictation ("110.", "Route 110", "bus 110" → `110`). If the
+route has no stop near you it looks wider (1.5 km), then tells you how many of
+its buses are running and where the closest one is heading.
+
 ## Notes
 
 - First request after idle can be slow (Render sleep)

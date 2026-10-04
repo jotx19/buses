@@ -20,6 +20,9 @@ const DEFAULT_NEARBY_N: usize = 12;
 const DEFAULT_ARRIVAL_N: usize = 2;
 const DEFAULT_VEHICLE_N: usize = 20;
 const VEHICLE_RADIUS_M: f64 = 1200.0;
+/// Siri: if a route has no stop within the normal radius, look this far before
+/// falling back to describing where its buses are.
+const SIRI_WIDE_RADIUS_M: f64 = 1500.0;
 
 const SOURCE_TRIP_UPDATES: &str = "OC Transpo GTFS-RT TripUpdates";
 const SOURCE_VEHICLE_POSITIONS: &str = "OC Transpo GTFS-RT VehiclePositions";
@@ -54,6 +57,22 @@ pub fn home_location() -> Option<(f64, f64)> {
 
 fn param<'a>(q: &'a HashMap<String, String>, key: &str) -> &'a str {
     q.get(key).map(String::as_str).unwrap_or("")
+}
+
+/// Route number from what a person typed or Siri dictated:
+/// "110", "110.", "Route 110", "bus #110", " 75 " → "110" / "75".
+/// Non-numeric input (e.g. future lettered routes) is passed through trimmed.
+fn route_query(raw: &str) -> String {
+    let digits: String = raw
+        .chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    if !digits.is_empty() {
+        let trimmed = digits.trim_start_matches('0');
+        return if trimmed.is_empty() { digits } else { trimmed.to_string() };
+    }
+    raw.trim().trim_end_matches(['.', '?', '!']).to_string()
 }
 
 fn parse_location(q: &HashMap<String, String>) -> Result<(f64, f64), &'static str> {
@@ -137,7 +156,7 @@ pub async fn api_nearby(State(app): State<Arc<AppState>>, Query(q): Params) -> R
 }
 
 pub async fn api_bus(State(app): State<Arc<AppState>>, Query(q): Params) -> Response {
-    let bus = param(&q, "bus").to_string();
+    let bus = route_query(param(&q, "bus"));
     if bus.is_empty() {
         return json_error(StatusCode::BAD_REQUEST, "missing bus query param");
     }
@@ -232,7 +251,7 @@ pub async fn siri_nearby(State(app): State<Arc<AppState>>, Query(q): Params) -> 
 }
 
 pub async fn siri_bus(State(app): State<Arc<AppState>>, Query(q): Params) -> Response {
-    let bus = param(&q, "bus").to_string();
+    let bus = route_query(param(&q, "bus"));
     if bus.is_empty() {
         return text(StatusCode::BAD_REQUEST, "Sorry, I need a bus number. Try saying a route like 68.");
     }
@@ -258,7 +277,70 @@ pub async fn siri_bus(State(app): State<Arc<AppState>>, Query(q): Params) -> Res
         Err(msg) => return text(StatusCode::BAD_REQUEST, format!("Sorry, {msg}.")),
     };
     let radius = parse_radius(&q, DEFAULT_RADIUS_M);
-    let nearby = stat.nearby_stops(lat, lon, radius);
-    let arrivals = transit::arrivals_for_route_nearby(&feed, &bus, &nearby, DEFAULT_ARRIVAL_N);
-    text(StatusCode::OK, transit::speak_arrivals(&bus, &arrivals))
+    // Try the usual walking radius, then a wider one, before giving up on stops.
+    for r in [radius, radius.max(SIRI_WIDE_RADIUS_M)] {
+        let nearby = stat.nearby_stops(lat, lon, r);
+        let arrivals = transit::arrivals_for_route_nearby(&feed, &bus, &nearby, DEFAULT_ARRIVAL_N);
+        if !arrivals.is_empty() {
+            return text(StatusCode::OK, transit::speak_arrivals(&bus, &arrivals));
+        }
+    }
+
+    // The route doesn't stop near you: describe where its buses are instead.
+    let vehicles = app.rt.vehicle_positions().await.ok();
+    text(StatusCode::OK, describe_route_buses(vehicles.as_deref(), &stat, &bus, lat, lon))
+}
+
+/// "Route 110 doesn't stop near you right now. 4 buses are running on it; the
+/// closest is 3.2 kilometres away, heading to Kanata."
+fn describe_route_buses(
+    feed: Option<&crate::gtfs_rt::FeedMessage>,
+    stat: &crate::gtfs_static::StaticData,
+    route: &str,
+    lat: f64,
+    lon: f64,
+) -> String {
+    let route_id = stat
+        .routes
+        .values()
+        .find(|r| r.short_name == route)
+        .map(|r| r.id.as_str())
+        .unwrap_or(route);
+    let mut buses: Vec<(f64, Option<String>)> = feed
+        .map(|f| f.entity.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|e| {
+            let v = e.vehicle.as_ref()?;
+            let trip = v.trip.as_ref()?;
+            if trip.route_id.as_deref() != Some(route_id) {
+                return None;
+            }
+            let p = v.position.as_ref()?;
+            let d = crate::gtfs_static::haversine_meters(lat, lon, p.latitude? as f64, p.longitude? as f64);
+            let headsign = trip
+                .trip_id
+                .as_deref()
+                .and_then(|t| stat.trips.get(t))
+                .map(|t| t.headsign.clone())
+                .filter(|h| !h.is_empty());
+            Some((d, headsign))
+        })
+        .collect();
+    buses.sort_by(|a, b| a.0.total_cmp(&b.0));
+
+    let Some((d, headsign)) = buses.first() else {
+        return format!("Route {route} doesn't stop near you, and no route {route} buses are running right now.");
+    };
+    let distance = if *d < 1000.0 {
+        format!("{} metres", (d / 10.0).round() * 10.0)
+    } else {
+        format!("{:.1} kilometres", d / 1000.0)
+    };
+    let heading = headsign.as_ref().map(|h| format!(", heading to {h}")).unwrap_or_default();
+    let count = match buses.len() {
+        1 => "1 bus is".to_string(),
+        n => format!("{n} buses are"),
+    };
+    format!("Route {route} doesn't stop near you right now. {count} running on it; the closest is {distance} away{heading}.")
 }
