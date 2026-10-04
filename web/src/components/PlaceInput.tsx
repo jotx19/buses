@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, type PlaceResult, type PlanPlace } from "../api";
-import { cx, fill, glass, muted } from "./ui";
+import { cx, fill, muted, popover } from "./ui";
 
 interface Props {
   label: string;
@@ -86,7 +86,7 @@ export function PlaceInput({ label, dot, placeholder, text, onText, onPlace, tra
       {open && results.length > 0 && (
         <ul
           role="listbox"
-          className={cx(glass, "absolute inset-x-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-[20px] bg-white/85 p-1.5 dark:bg-[#1c1c1e]/85")}
+          className={cx(popover, "absolute inset-x-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-[20px] p-1.5")}
         >
           {results.map((r, i) => (
             <li key={`${r.lat},${r.lon},${i}`}>

@@ -7,8 +7,17 @@ export const selected = "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900
 
 /** Frosted glass: heavy blur + saturation, translucent fill, hairline border. */
 export const glass =
-  "border border-white/60 bg-white/40 shadow-[0_24px_60px_-16px_rgba(0,0,0,0.3)] backdrop-blur-3xl backdrop-saturate-200 " +
-  "dark:border-white/[0.09] dark:bg-[#1c1c1e]/45 dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)]";
+  "border border-white/60 bg-white/40 shadow-[0_24px_60px_-16px_rgba(0,0,0,0.3)] backdrop-blur-[90px] backdrop-saturate-200 " +
+  "dark:border-white/[0.08] dark:bg-[#0f0f11]/65 dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.8)]";
+
+/**
+ * Dropdowns / popovers. They sit inside another glass panel, and a nested
+ * backdrop blur can't see past its parent, so they need a near-opaque fill
+ * (kept separate from `glass` so the two backgrounds never compete).
+ */
+export const popover =
+  "border border-black/[0.06] bg-white/[0.97] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.35)] backdrop-blur-[90px] backdrop-saturate-200 " +
+  "dark:border-white/[0.08] dark:bg-[#141416]/[0.96] dark:shadow-[0_28px_70px_-12px_rgba(0,0,0,0.85)]";
 
 export const muted = "text-zinc-500 dark:text-white/50";
 export const faint = "text-zinc-400 dark:text-white/30";

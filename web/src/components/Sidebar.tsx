@@ -3,7 +3,7 @@ import type { RouteInfo, Vehicle } from "../api";
 import { agoLabel, compareRoutes } from "../format";
 import { IconClose, IconCollapse, IconExpand, IconSearch } from "./Icons";
 import { Logo } from "./Logo";
-import { RouteBadge, cx, fill, glass, muted } from "./ui";
+import { RouteBadge, cx, fill, glass, muted, popover } from "./ui";
 
 interface Props {
   vehicles: Vehicle[];
@@ -248,9 +248,8 @@ export function Sidebar({
           <ul
             role="listbox"
             className={cx(
-              glass,
+              popover,
               "absolute inset-x-3 top-full z-30 mt-1 max-h-[min(380px,50vh)] overflow-y-auto rounded-[22px] p-1.5 [scrollbar-width:thin]",
-              "dark:bg-[#1c1c1e]/80 bg-white/80",
             )}
           >
             {options.map((o, i) => (
