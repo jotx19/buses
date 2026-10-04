@@ -277,7 +277,7 @@ pub fn speak_nearby(routes: &[NearbyRoute], radius_m: f64) -> String {
             )
         })
         .collect();
-    format!("Nearby buses: {}. Which bus number should I check?", join_speech(&parts))
+    format!("Nearby buses: {}.", join_speech(&parts))
 }
 
 pub fn speak_arrivals(route_id: &str, arrivals: &[Arrival]) -> String {
